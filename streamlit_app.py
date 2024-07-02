@@ -52,7 +52,6 @@ if ticker:
        
         st.table([columns] + data_list)
     
-<<<<<<< HEAD
         fig, ax = plt.subplots(figsize=(12, 6))
         
         labels = ['Real-time price', '90-day MA', '180-day MA', '365-day MA']
@@ -70,23 +69,6 @@ if ticker:
         ax.grid(True, linestyle='--', alpha=0.3)
         
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.2f}'))
-=======
-        fig, ax = plt.subplots(figsize=(10, 6))
-        
-      
-        labels = ['Real-time price', '90-day MA', '180-day MA', '365-day MA']
-        values = data[labels].values[0]
-        
-        bars = ax.bar(labels, values)
-        
-        bars[0].set_color('red')
-        for bar in bars[1:]:
-            bar.set_color('blue')
-        
-        ax.set_title(f'Price and Moving Averages for {ticker}')
-        ax.set_ylabel('Price')
-        ax.set_xlabel('Metric')
->>>>>>> c076c4bd7958809b3badadd3efeb63253615c5d2
         
         plt.xticks(rotation=45, ha='right')
         
