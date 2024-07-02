@@ -21,7 +21,7 @@ def fetch_ticker_data(ticker):
         )
         
         query = """
-        SELECT ticker, "Real-time price", "90-day MA", "180-day MA", "365-day MA"
+        SELECT ticker, "365-day MA", "180-day MA", "90-day MA", "Real-time price"  
         FROM student.mc_stocks
         WHERE UPPER(ticker) = UPPER(%s);
         """
@@ -54,17 +54,25 @@ if ticker:
     
         fig, ax = plt.subplots(figsize=(12, 6))
         
-        labels = ['Real-time price', '90-day MA', '180-day MA', '365-day MA']
+        # Reorder labels and values
+        labels = ['365-day MA', '180-day MA', '90-day MA', 'Real-time price']
         values = data[labels].values[0]
         
-        colors = ['red', 'blue', 'green', 'purple']
+        # Set bar width to 20% of the default (which is 0.8)
+        bar_width = 0.8 * 0.2
+        
+        # Define colors: blue for MAs, red for 'Real-time price'
+        colors = ['blue'] * 3 + ['red']
+        
         for i, (label, value) in enumerate(zip(labels, values)):
-            ax.bar(label, value, color=colors[i], label=label)
+            ax.bar(label, value, color=colors[i], width=bar_width)
+        
+        # Add a line connecting the tops of the bars
+        ax.plot(labels, values, color='black', linestyle='-', marker='o', linewidth=2, markersize=6)
         
         ax.set_title(f'Price and Moving Averages for {ticker}', fontsize=16)
         ax.set_ylabel('Price ($)', fontsize=12)
         ax.set_xlabel('Metric', fontsize=12)
-        ax.legend(fontsize=10, loc='upper left')
         
         ax.grid(True, linestyle='--', alpha=0.3)
         
