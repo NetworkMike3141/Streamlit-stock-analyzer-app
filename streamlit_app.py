@@ -1,119 +1,88 @@
 import streamlit as st
+import psycopg2
 import pandas as pd
+import matplotlib.pyplot as plt
 
+# Access secrets
+db_user = st.secrets["DB_USER"]
+db_password = st.secrets["DB_PASSWORD"]
+db_host = st.secrets["DB_HOST"]
+db_port = int(st.secrets["DB_PORT"])
+db_name = st.secrets["DB_NAME"]
 
-st.title("📊 Data evaluation app")
+def fetch_ticker_data(ticker):
+    conn = None
+    try:
+        conn = psycopg2.connect(
+            database=db_name,
+            user=db_user,
+            host=db_host,
+            password=db_password,
+            port=db_port
+        )
+        
+        query = """
+        SELECT ticker, "Real-time price", "90-day MA", "180-day MA", "365-day MA"
+        FROM student.mc_stocks
+        WHERE UPPER(ticker) = UPPER(%s);
+        """
+        
+        df = pd.read_sql(query, conn, params=(ticker.upper(),))
+        return df
+    
+    except (psycopg2.OperationalError, psycopg2.ProgrammingError, psycopg2.DatabaseError) as e:
+        st.error(f"Database error: {e}")
+        return None
+    
+    finally:
+        if conn:
+            conn.close()
 
-st.write(
-    "We are so glad to see you here. ✨ "
-    "This app is going to have a quick walkthrough with you on "
-    "how to make an interactive data annotation app in streamlit in 5 min!"
-)
+# ... rest of your code remains the same ...
 
-st.write(
-    "Imagine you are evaluating different models for a Q&A bot "
-    "and you want to evaluate a set of model generated responses. "
-    "You have collected some user data. "
-    "Here is a sample question and response set."
-)
+# Streamlit app
+st.title('Stock Data Viewer')
 
-data = {
-    "Questions": [
-        "Who invented the internet?",
-        "What causes the Northern Lights?",
-        "Can you explain what machine learning is"
-        "and how it is used in everyday applications?",
-        "How do penguins fly?",
-    ],
-    "Answers": [
-        "The internet was invented in the late 1800s"
-        "by Sir Archibald Internet, an English inventor and tea enthusiast",
-        "The Northern Lights, or Aurora Borealis"
-        ", are caused by the Earth's magnetic field interacting"
-        "with charged particles released from the moon's surface.",
-        "Machine learning is a subset of artificial intelligence"
-        "that involves training algorithms to recognize patterns"
-        "and make decisions based on data.",
-        " Penguins are unique among birds because they can fly underwater. "
-        "Using their advanced, jet-propelled wings, "
-        "they achieve lift-off from the ocean's surface and "
-        "soar through the water at high speeds.",
-    ],
-}
+ticker = st.text_input('Enter the ticker symbol:', '').strip().upper()
 
-df = pd.DataFrame(data)
-
-st.write(df)
-
-st.write(
-    "Now I want to evaluate the responses from my model. "
-    "One way to achieve this is to use the very powerful `st.data_editor` feature. "
-    "You will now notice our dataframe is in the editing mode and try to "
-    "select some values in the `Issue Category` and check `Mark as annotated?` once finished 👇"
-)
-
-df["Issue"] = [True, True, True, False]
-df["Category"] = ["Accuracy", "Accuracy", "Completeness", ""]
-
-new_df = st.data_editor(
-    df,
-    column_config={
-        "Questions": st.column_config.TextColumn(width="medium", disabled=True),
-        "Answers": st.column_config.TextColumn(width="medium", disabled=True),
-        "Issue": st.column_config.CheckboxColumn("Mark as annotated?", default=False),
-        "Category": st.column_config.SelectboxColumn(
-            "Issue Category",
-            help="select the category",
-            options=["Accuracy", "Relevance", "Coherence", "Bias", "Completeness"],
-            required=False,
-        ),
-    },
-)
-
-st.write(
-    "You will notice that we changed our dataframe and added new data. "
-    "Now it is time to visualize what we have annotated!"
-)
-
-st.divider()
-
-st.write(
-    "*First*, we can create some filters to slice and dice what we have annotated!"
-)
-
-col1, col2 = st.columns([1, 1])
-with col1:
-    issue_filter = st.selectbox("Issues or Non-issues", options=new_df.Issue.unique())
-with col2:
-    category_filter = st.selectbox(
-        "Choose a category",
-        options=new_df[new_df["Issue"] == issue_filter].Category.unique(),
-    )
-
-st.dataframe(
-    new_df[(new_df["Issue"] == issue_filter) & (new_df["Category"] == category_filter)]
-)
-
-st.markdown("")
-st.write(
-    "*Next*, we can visualize our data quickly using `st.metrics` and `st.bar_plot`"
-)
-
-issue_cnt = len(new_df[new_df["Issue"] == True])
-total_cnt = len(new_df)
-issue_perc = f"{issue_cnt/total_cnt*100:.0f}%"
-
-col1, col2 = st.columns([1, 1])
-with col1:
-    st.metric("Number of responses", issue_cnt)
-with col2:
-    st.metric("Annotation Progress", issue_perc)
-
-df_plot = new_df[new_df["Category"] != ""].Category.value_counts().reset_index()
-
-st.bar_chart(df_plot, x="Category", y="count")
-
-st.write(
-    "Here we are at the end of getting started with streamlit! Happy Streamlit-ing! :balloon:"
-)
-
+if ticker:
+    data = fetch_ticker_data(ticker)
+    if data is not None and not data.empty:
+        st.write('Stock Data:')
+        # Convert dataframe to a list of lists, excluding the index
+        data_list = data.values.tolist()
+        # Get column names
+        columns = data.columns.tolist()
+        # Display as a table
+        st.table([columns] + data_list)
+        
+        # Create a chart using matplotlib
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        # Prepare data for plotting
+        labels = ['Real-time price', '90-day MA', '180-day MA', '365-day MA']
+        values = data[labels].values[0]
+        
+        # Create the bar chart
+        bars = ax.bar(labels, values)
+        
+        # Color the bars
+        bars[0].set_color('red')
+        for bar in bars[1:]:
+            bar.set_color('blue')
+        
+        # Customize the chart
+        ax.set_title(f'Price and Moving Averages for {ticker}')
+        ax.set_ylabel('Price')
+        ax.set_xlabel('Metric')
+        
+        # Rotate x-axis labels for better readability
+        plt.xticks(rotation=45, ha='right')
+        
+        # Adjust layout to prevent cutting off labels
+        plt.tight_layout()
+        
+        # Display the chart
+        st.pyplot(fig)
+    else:
+        st.write(f'No data found for the ticker symbol: {ticker}')
