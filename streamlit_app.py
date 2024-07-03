@@ -11,7 +11,7 @@ st.set_page_config(
    layout="wide",
    initial_sidebar_state="collapsed",
 )
-st.title('📈 Stock Data Viewer 📈')
+st.title('📈 Stock Data Viewer')
 
 st.write("View and analyze stock data including moving averages and real-time prices.")
 
