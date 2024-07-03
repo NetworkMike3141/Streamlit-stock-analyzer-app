@@ -1,7 +1,7 @@
 import streamlit as st
 import psycopg2
 import pandas as pd
-import plotly.express as px
+import plotly.graph_objects as go
 from psycopg2 import sql, OperationalError
 
 # Set page configuration
@@ -11,7 +11,7 @@ st.set_page_config(
    layout="wide",
    initial_sidebar_state="collapsed",
 )
-st.title('📈 Stock Data Viewer')
+st.title('📈 Stock Data Viewer 📈')
 
 st.write("View and analyze stock data including moving averages and real-time prices.")
 
@@ -61,28 +61,33 @@ if ticker:
         labels = ['365-day MA', '180-day MA', '90-day MA', 'Real-time price']
         values = data.iloc[0, 1:].tolist()
         
-        plot_data = pd.DataFrame({
-            'Metric': labels,
-            'Price': values
-        })
+        # Set colors, blue for MAs and red for 'Real-time price'
+        colors = ['blue', 'blue', 'blue', 'red']
         
-        # Plot the data
-        fig = px.bar(
-            plot_data, 
-            x='Metric', 
-            y='Price', 
-            title=f'Price and Moving Averages for {ticker}', 
-            labels={'Price': 'Price ($)'},
-            color='Metric',  # Color bars by Metric
-            color_discrete_map={
-                '365-day MA': 'blue',
-                '180-day MA': 'blue',
-                '90-day MA': 'blue',
-                'Real-time price': 'red'
-            }
+        # Create the figure
+        fig = go.Figure()
+        
+        # Add bars to the figure
+        for label, value, color in zip(labels, values, colors):
+            fig.add_trace(go.Bar(
+                x=[label],
+                y=[value],
+                name=label,
+                marker_color=color,
+                width=0.4  # Reduced bar width by 50%
+            ))
+        
+        # Update layout
+        fig.update_layout(
+            title=f'Price and Moving Averages for {ticker}',
+            xaxis_title='Metric',
+            yaxis_title='Price ($)',
+            yaxis_tickprefix='$',
+            xaxis_tickangle=-45,
+            showlegend=False
         )
         
-        fig.update_layout(yaxis_tickprefix='$', xaxis_tickangle=-45)
+        # Display the plot
         st.plotly_chart(fig)
     else:
         st.write(f'No data found for the ticker symbol: {ticker}')
