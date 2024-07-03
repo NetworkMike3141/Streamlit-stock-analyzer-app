@@ -1,87 +1,88 @@
 import streamlit as st
 import psycopg2
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
+from psycopg2 import sql, OperationalError
 
+# Set page configuration
+st.set_page_config(
+   page_title="Stock Data Viewer",
+   page_icon="📈",
+   layout="wide",
+   initial_sidebar_state="collapsed",
+)
+st.title('📈 Stock Data Viewer 📈')
+
+st.write("View and analyze stock data including moving averages and real-time prices.")
+
+# Database credentials
 db_user = st.secrets["DB_USER"]
 db_password = st.secrets["DB_PASSWORD"]
 db_host = st.secrets["DB_HOST"]
 db_port = int(st.secrets["DB_PORT"])
 db_name = st.secrets["DB_NAME"]
 
+# Function to fetch ticker data
 def fetch_ticker_data(ticker):
-    conn = None
     try:
-        conn = psycopg2.connect(
-            database=db_name,    
+        connection = psycopg2.connect(
+            dbname=db_name,
             user=db_user,
-            host=db_host,
             password=db_password,
+            host=db_host,
             port=db_port
         )
-        
-        query = """
-        SELECT ticker, "365-day MA", "180-day MA", "90-day MA", "Real-time price"  
-        FROM student.mc_stocks
-        WHERE UPPER(ticker) = UPPER(%s);
-        """
-        
-        df = pd.read_sql(query, conn, params=(ticker.upper(),))
-        return df
-    
-    except (psycopg2.OperationalError, psycopg2.ProgrammingError, psycopg2.DatabaseError) as e:
+        cursor = connection.cursor()
+        query = sql.SQL("""
+            SELECT ticker, "365-day MA", "180-day MA", "90-day MA", "Real-time price"  
+            FROM student.mc_stocks
+            WHERE UPPER(ticker) = UPPER(%s);
+        """)
+        cursor.execute(query, (ticker,))
+        data = cursor.fetchall()
+        colnames = [desc[0] for desc in cursor.description]
+        cursor.close()
+        connection.close()
+        return pd.DataFrame(data, columns=colnames)
+    except OperationalError as e:
         st.error(f"Database error: {e}")
         return None
-    
-    finally:
-        if conn:
-            conn.close()
 
-st.title('Stock Data Viewer')
-
+# User input for ticker symbol
 ticker = st.text_input('Enter the ticker symbol:', '').strip().upper()
 
 if ticker:
     data = fetch_ticker_data(ticker)
     if data is not None and not data.empty:
         st.write('Stock Data:')
-       
-        data_list = data.values.tolist()
-   
-        columns = data.columns.tolist()
-       
-        st.table([columns] + data_list)
-    
-        fig, ax = plt.subplots(figsize=(12, 6))
+        st.table(data)
         
-        # Reorder labels and values
+        # Prepare data for the bar chart
         labels = ['365-day MA', '180-day MA', '90-day MA', 'Real-time price']
-        values = data[labels].values[0]
+        values = data.iloc[0, 1:].tolist()
         
-        # Set bar width to 20% of the default (which is 0.8)
-        bar_width = 0.8 * 0.2
+        plot_data = pd.DataFrame({
+            'Metric': labels,
+            'Price': values
+        })
         
-        # Define colors: blue for MAs, red for 'Real-time price'
-        colors = ['blue'] * 3 + ['red']
+        # Plot the data
+        fig = px.bar(
+            plot_data, 
+            x='Metric', 
+            y='Price', 
+            title=f'Price and Moving Averages for {ticker}', 
+            labels={'Price': 'Price ($)'},
+            color='Metric',  # Color bars by Metric
+            color_discrete_map={
+                '365-day MA': 'blue',
+                '180-day MA': 'blue',
+                '90-day MA': 'blue',
+                'Real-time price': 'red'
+            }
+        )
         
-        for i, (label, value) in enumerate(zip(labels, values)):
-            ax.bar(label, value, color=colors[i], width=bar_width)
-        
-        # Add a line connecting the tops of the bars
-        ax.plot(labels, values, color='black', linestyle='-', marker='o', linewidth=2, markersize=6)
-        
-        ax.set_title(f'Price and Moving Averages for {ticker}', fontsize=16)
-        ax.set_ylabel('Price ($)', fontsize=12)
-        ax.set_xlabel('Metric', fontsize=12)
-        
-        ax.grid(True, linestyle='--', alpha=0.3)
-        
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.2f}'))
-        
-        plt.xticks(rotation=45, ha='right')
-        
-        plt.tight_layout()
-        
-        st.pyplot(fig)
+        fig.update_layout(yaxis_tickprefix='$', xaxis_tickangle=-45)
+        st.plotly_chart(fig)
     else:
         st.write(f'No data found for the ticker symbol: {ticker}')
