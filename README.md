@@ -51,8 +51,6 @@ View the stock data and the corresponding bar chart visualization.
 Error Handling
 If there is a database connection error, an error message will be displayed in the application.
 
-License
-This project is licensed under the MIT License. See the LICENSE file for more details.
 
 Feel free to contribute to this project by submitting issues or pull requests. For major changes, please open an issue first to discuss what you would like to change.
 
