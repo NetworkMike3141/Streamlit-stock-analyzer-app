@@ -53,15 +53,47 @@ if ticker:
         st.write('Stock Data:')
         st.table(data)
         
+        # Individual graphs for each moving average vs real-time price
+        for ma in ['365-day MA', '180-day MA', '90-day MA']:
+            fig = go.Figure()
+            
+            fig.add_trace(go.Bar(
+                x=[ma],
+                y=[data.iloc[0][ma]],
+                name=ma,
+                marker_color='blue',
+                width=0.4 
+            ))
+            
+            fig.add_trace(go.Bar(
+                x=['Real-time price'],
+                y=[data.iloc[0]['Real-time price']],
+                name='Real-time price',
+                marker_color='red',
+                width=0.4 
+            ))
+            
+            fig.update_layout(
+                title=f'{ma} vs Real-time Price for {ticker}',
+                xaxis_title='Metric',
+                yaxis_title='Price ($)',
+                yaxis_tickprefix='$',
+                xaxis_tickangle=-45,
+                showlegend=False
+            )
+            
+            st.plotly_chart(fig)
+
+        # Graph with all 4 values
         labels = ['365-day MA', '180-day MA', '90-day MA', 'Real-time price']
         values = data.iloc[0, 1:].tolist()
         
         colors = ['blue', 'blue', 'blue', 'red']
         
-        fig = go.Figure()
+        fig_all = go.Figure()
         
         for label, value, color in zip(labels, values, colors):
-            fig.add_trace(go.Bar(
+            fig_all.add_trace(go.Bar(
                 x=[label],
                 y=[value],
                 name=label,
@@ -69,7 +101,7 @@ if ticker:
                 width=0.4 
             ))
         
-        fig.update_layout(
+        fig_all.update_layout(
             title=f'Price and Moving Averages for {ticker}',
             xaxis_title='Metric',
             yaxis_title='Price ($)',
@@ -78,6 +110,7 @@ if ticker:
             showlegend=False
         )
         
-        st.plotly_chart(fig)
+        st.plotly_chart(fig_all)
+
     else:
         st.write(f'No data found for the ticker symbol: {ticker}')
